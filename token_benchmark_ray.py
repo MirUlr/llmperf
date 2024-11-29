@@ -28,6 +28,7 @@ from transformers import LlamaTokenizerFast
 
 def get_token_throughput_latencies(
     model: str,
+    stream: bool,
     mean_input_tokens: int,
     stddev_input_tokens: int,
     mean_output_tokens: int,
@@ -42,6 +43,7 @@ def get_token_throughput_latencies(
 
     Args:
         model: The name of the model to query.
+        stream: Whether to execute llm calls in streaming mode.
         mean_input_tokens: The mean number of tokens to send in the prompt for the request.
         stddev_input_tokens: The standard deviation of the number of tokens to send in the prompt for the request.
         mean_output_tokens: The mean number of tokens to generate per request.
@@ -106,6 +108,7 @@ def get_token_throughput_latencies(
                 prompt=prompts.pop(),
                 sampling_params=default_sampling_params,
                 llm_api=llm_api,
+                stream=stream,
             )
             req_launcher.launch_requests(request_config)
 
@@ -280,6 +283,7 @@ def metrics_summary(
 def run_token_benchmark(
     llm_api: str,
     model: str,
+    stream: bool,
     test_timeout_s: int,
     max_num_completed_requests: int,
     num_concurrent_requests: int,
@@ -295,6 +299,7 @@ def run_token_benchmark(
     Args:
         llm_api: The name of the llm api to use.
         model: The name of the model to query.
+        stream: whether to call llm api in stream mode.
         max_num_completed_requests: The number of requests to complete before finishing the test.
         test_timeout_s: The amount of time to run the test for before reporting results.
         num_concurrent_requests: The number of concurrent requests to make. Increase
@@ -316,6 +321,7 @@ def run_token_benchmark(
 
     summary, individual_responses = get_token_throughput_latencies(
         model=model,
+        stream=stream,
         llm_api=llm_api,
         test_timeout_s=test_timeout_s,
         max_num_completed_requests=max_num_completed_requests,
@@ -460,6 +466,14 @@ args.add_argument(
         "name=foo,bar=1. These will be added to the metadata field of the results. "
     ),
 )
+args.add_argument(
+    "--stream",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    default=False,
+    help="Whether execute performance tests in streaming mode."
+)
+
 
 if __name__ == "__main__":
     env_vars = dict(os.environ)
