@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 from pydantic import BaseModel
 
 
@@ -12,10 +12,11 @@ class RequestConfig(BaseModel):
             For more information see the Router app's documentation for the completions
         llm_api: The name of the LLM API to send the request to.
         metadata: Additional metadata to attach to the request for logging or validation purposes.
+        stream: Whether to call llm api in stream mode. Default is `True`.
     """
-
     model: str
     prompt: Tuple[str, int]
     sampling_params: Optional[Dict[str, Any]] = None
     llm_api: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+    stream: Optional[bool] = True
