@@ -27,7 +27,7 @@ class OpenAIChatCompletionsClient(LLMClient):
         body = {
             "model": model,
             "messages": message,
-            "stream": True,
+            "stream": request_config.stream,
         }
         sampling_params = request_config.sampling_params
         body.update(sampling_params or {})
@@ -71,34 +71,44 @@ class OpenAIChatCompletionsClient(LLMClient):
                     error_msg = response.text
                     error_response_code = response.status_code
                     response.raise_for_status()
-                for chunk in response.iter_lines(chunk_size=None):
-                    chunk = chunk.strip()
 
-                    if not chunk:
-                        continue
-                    stem = "data: "
-                    chunk = chunk[len(stem) :]
-                    if chunk == b"[DONE]":
-                        continue
-                    tokens_received += 1
-                    data = json.loads(chunk)
+                if request_config.stream:
+                    for chunk in response.iter_lines(chunk_size=None):
+                        chunk = chunk.strip()
 
-                    if "error" in data:
-                        error_msg = data["error"]["message"]
-                        error_response_code = data["error"]["code"]
-                        raise RuntimeError(data["error"]["message"])
-                        
-                    delta = data["choices"][0]["delta"]
-                    if delta.get("content", None):
-                        if not ttft:
+                        if not chunk:
+                            continue
+                        stem = "data: "
+                        chunk = chunk[len(stem) :]
+                        if chunk == b"[DONE]":
+                            continue
+                        tokens_received += 1
+                        data = json.loads(chunk)
+
+                        if "error" in data:
+                            error_msg = data["error"]["message"]
+                            error_response_code = data["error"]["code"]
+                            raise RuntimeError(data["error"]["message"])
+
+                        delta = data["choices"][0]["delta"]
+                        if delta.get("content", None):
+                            if not ttft:
+                                ttft = time.monotonic() - start_time
+                                time_to_next_token.append(ttft)
+                            else:
+                                time_to_next_token.append(
+                                    time.monotonic() - most_recent_received_token_time
+                                )
+                            most_recent_received_token_time = time.monotonic()
+                            generated_text += delta["content"]
+                    else:
+                        # requested a single chunk
+                        data = response.json()["choices"][0]["message"]
+
+                        if data.get("content", None):
                             ttft = time.monotonic() - start_time
                             time_to_next_token.append(ttft)
-                        else:
-                            time_to_next_token.append(
-                                time.monotonic() - most_recent_received_token_time
-                            )
-                        most_recent_received_token_time = time.monotonic()
-                        generated_text += delta["content"]
+                        generated_text += data["content"]
 
             total_request_time = time.monotonic() - start_time
             output_throughput = tokens_received / total_request_time
