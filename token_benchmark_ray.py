@@ -468,9 +468,8 @@ args.add_argument(
 )
 args.add_argument(
     "--stream",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    default=False,
+    type=str,
+    default="false",
     help="Whether execute performance tests in streaming mode."
 )
 
@@ -490,6 +489,7 @@ if __name__ == "__main__":
     run_token_benchmark(
         llm_api=args.llm_api,
         model=args.model,
+        stream=(args.stream == "true"),
         test_timeout_s=args.timeout,
         max_num_completed_requests=args.max_num_completed_requests,
         mean_input_tokens=args.mean_input_tokens,
