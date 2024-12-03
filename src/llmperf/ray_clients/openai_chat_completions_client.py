@@ -105,9 +105,8 @@ class OpenAIChatCompletionsClient(LLMClient):
                         # requested a single chunk
                         data = response.json()["choices"][0]["message"]
 
-                        if data.get("content", None):
-                            ttft = time.monotonic() - start_time
-                            time_to_next_token.append(ttft)
+                        ttft = time.monotonic() - start_time
+                        time_to_next_token.append(ttft)
                         generated_text += data["content"]
 
             total_request_time = time.monotonic() - start_time
