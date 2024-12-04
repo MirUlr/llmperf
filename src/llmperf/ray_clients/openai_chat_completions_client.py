@@ -79,7 +79,7 @@ class OpenAIChatCompletionsClient(LLMClient):
                         if not chunk:
                             continue
                         stem = "data: "
-                        chunk = chunk[len(stem) :]
+                        chunk = chunk[len(stem):]
                         if chunk == b"[DONE]":
                             continue
                         tokens_received += 1
@@ -101,13 +101,13 @@ class OpenAIChatCompletionsClient(LLMClient):
                                 )
                             most_recent_received_token_time = time.monotonic()
                             generated_text += delta["content"]
-                    else:
-                        # requested a single chunk
-                        data = response.json()["choices"][0]["message"]
+                else:
+                    # requested as single batch
+                    data = response.json()["choices"][0]["message"]
 
-                        ttft = time.monotonic() - start_time
-                        time_to_next_token.append(ttft)
-                        generated_text += data["content"]
+                    ttft = time.monotonic() - start_time
+                    time_to_next_token.append(ttft)
+                    generated_text += data["content"]
 
             total_request_time = time.monotonic() - start_time
             output_throughput = tokens_received / total_request_time
