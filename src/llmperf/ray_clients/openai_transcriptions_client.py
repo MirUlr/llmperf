@@ -41,6 +41,7 @@ class OpenAITranscriptionsClient(LLMClient):
         error_msg = ""
         output_throughput = 0
         total_request_time = 0
+        input_audio_len = 0
 
         metrics = {}
         metrics[common_metrics.ERROR_CODE] = None
