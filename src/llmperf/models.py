@@ -20,3 +20,4 @@ class RequestConfig(BaseModel):
     llm_api: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
     stream: Optional[bool] = True
+    audio_file: Optional[str] = ""

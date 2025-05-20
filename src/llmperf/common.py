@@ -3,6 +3,7 @@ from llmperf.ray_clients.litellm_client import LiteLLMClient
 from llmperf.ray_clients.openai_chat_completions_client import (
     OpenAIChatCompletionsClient,
 )
+from llmperf.ray_clients.openai_transcriptions_client import OpenAITranscriptionsClient
 from llmperf.ray_clients.sagemaker_client import SageMakerClient
 from llmperf.ray_clients.vertexai_client import VertexAIClient
 from llmperf.ray_llm_client import LLMClient
@@ -24,6 +25,8 @@ def construct_clients(llm_api: str, num_clients: int) -> List[LLMClient]:
     """
     if llm_api == "openai":
         clients = [OpenAIChatCompletionsClient.remote() for _ in range(num_clients)]
+    elif llm_api == "openai-audio":
+        clients = [OpenAITranscriptionsClient.remote() for _ in range(num_clients)]
     elif llm_api == "sagemaker":
         clients = [SageMakerClient.remote() for _ in range(num_clients)]
     elif llm_api == "vertexai":
