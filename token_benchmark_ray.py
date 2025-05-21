@@ -38,6 +38,7 @@ def get_token_throughput_latencies(
     max_num_completed_requests: int = 500,
     test_timeout_s=90,
     llm_api="openai",
+    audio_data_path: Optional[Path]=None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Get the token throughput and latencies for the given model.
 
@@ -91,6 +92,18 @@ def get_token_throughput_latencies(
                 tokenizer=tokenizer,
             )
         )
+    audio_files = []
+    if audio_data_path:
+        audio_extensions = ['.wav', '.mp3']
+        for filename in os.listdir(audio_data_path):
+            if os.path.isfile(os.path.join(audio_data_path, filename)):
+                file_extension = os.path.splitext(filename)[1].lower()
+                if file_extension in audio_extensions:
+                    audio_files.append(os.path.join(audio_data_path, filename))
+        # Repeat the list of audio_files to get a list of files with the length max_num_completed_requests
+        repeated_audio_files = (audio_files * (max_num_completed_requests // len(audio_files) + 1))[:max_num_completed_requests]
+        audio_files = repeated_audio_files
+
     start_time = time.monotonic()
     iter = 0
     pbar = tqdm(total=max_num_completed_requests)
@@ -109,6 +122,7 @@ def get_token_throughput_latencies(
                 sampling_params=default_sampling_params,
                 llm_api=llm_api,
                 stream=stream,
+                audio_file=audio_files.pop() if audio_data_path else ""
             )
             req_launcher.launch_requests(request_config)
 
@@ -133,6 +147,7 @@ def get_token_throughput_latencies(
                     request_metrics[common_metrics.REQ_OUTPUT_THROUGHPUT] = (
                         num_output_tokens / request_metrics[common_metrics.E2E_LAT]
                     )
+                request_metrics[common_metrics.INPUT_AUDIO_SECONDS] = request_metrics.get(common_metrics.INPUT_AUDIO_SECONDS, 0)
                 all_metrics.append(request_metrics)
             completed_requests.extend(all_metrics)
         pbar.update(len(completed_requests) - num_completed_requests)
@@ -160,6 +175,7 @@ def get_token_throughput_latencies(
         request_metrics[common_metrics.REQ_OUTPUT_THROUGHPUT] = (
             num_output_tokens / request_metrics[common_metrics.E2E_LAT]
         )
+        request_metrics[common_metrics.INPUT_AUDIO_SECONDS] = request_metrics.get(common_metrics.INPUT_AUDIO_SECONDS, 0)
 
         all_metrics.append(request_metrics)
     completed_requests.extend(all_metrics)
@@ -225,6 +241,7 @@ def metrics_summary(
         common_metrics.REQ_OUTPUT_THROUGHPUT,
         common_metrics.NUM_INPUT_TOKENS,
         common_metrics.NUM_OUTPUT_TOKENS,
+        common_metrics.INPUT_AUDIO_SECONDS,
     ]:
         print(key)
         ret[key] = {}
@@ -277,6 +294,13 @@ def metrics_summary(
     ret[common_metrics.NUM_COMPLETED_REQUESTS] = num_completed_requests
     ret[common_metrics.COMPLETED_REQUESTS_PER_MIN] = num_completed_requests_per_min
 
+    overall_audio_duration = df_without_errored_req[
+        common_metrics.INPUT_AUDIO_SECONDS
+    ].sum()
+    wall_time_factor = overall_audio_duration / (end_time - start_time)
+    print(f"Transcribed {overall_audio_duration}s in {end_time - start_time}s")
+    print(f"Transcription speed: {wall_time_factor}x real-time")
+
     return ret
 
 
@@ -294,6 +318,7 @@ def run_token_benchmark(
     additional_sampling_params: str,
     results_dir: str,
     user_metadata: Dict[str, Any],
+    audio_data_path: Path,
 ):
     """
     Args:
@@ -331,6 +356,7 @@ def run_token_benchmark(
         stddev_output_tokens=stddev_output_tokens,
         num_concurrent_requests=num_concurrent_requests,
         additional_sampling_params=json.loads(additional_sampling_params),
+        audio_data_path=audio_data_path,
     )
 
     if results_dir:
@@ -472,6 +498,12 @@ args.add_argument(
     default="false",
     help="Whether execute performance tests in streaming mode."
 )
+args.add_argument(
+    "--audio-data-path",
+    type=str,
+    default="",
+    help="Path to a directory of `.mp3` audio files."
+)
 
 
 if __name__ == "__main__":
@@ -500,4 +532,5 @@ if __name__ == "__main__":
         additional_sampling_params=args.additional_sampling_params,
         results_dir=args.results_dir,
         user_metadata=user_metadata,
+        audio_data_path=args.audio_data_path,
     )
